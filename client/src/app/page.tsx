@@ -1,47 +1,44 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import React, {useEffect, useState} from 'react';
+import chatSocket from "@/app/socket";
 
 export default function Home() {
-  const [input, setInput] = useState("");
-  const [messages, setMessage] = useState<string[]>([]);
+    const [input, setInput] = useState("");
+    const [messages, setMessage] = useState<string[]>([]);
 
-  const socket = io("http://localhost:8080");
+    let onConnect = () => {
+        console.log("connected:" + chatSocket.id);
+    };
+    let onDisconnect = () => {
+        console.log("disconnected");
+    };
 
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log(socket.id);
-    });
+    let onMessageEvent = (data: string) => {
+        setMessage([...messages, data]);
+    };
+    chatSocket.on("connect", onConnect);
+    chatSocket.on("disconnect", onDisconnect);
+    chatSocket.on("messageFromServer", onMessageEvent);
+    useEffect(() => {
+        chatSocket.connect();
+    }, []);
+    const onChangeHandler = (event: any) => {
+        setInput(event.target.value);
+    };
 
-    socket.on("messageFromServer", (data) => {
-      console.log(data);
-      setMessage((oldArray) => [...oldArray, data.data]);
-    });
+    const onClickHandler = () => {
+        console.log("here" + input);
+        chatSocket.emit("send_message", {chatMessage: input, id: chatSocket.id, timestamp: Date.now()});
+    };
 
-    socket.io.on("reconnect", (data) => {
-      console.log("reconnect event");
-      console.log(data);
-    });
-  }, []);
-
-  const onChangeHandler = (event: any) => {
-    setInput(event.target.value);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <input type="text" onChange={onChangeHandler} value={input} />
-      <button
-        onClick={() => {
-          console.log("here");
-          socket.emit("messageFromClient", { data: input });
-        }}>
-        Submit
-      </button>
-      {messages.map((item, index) => {
-        return <h5 key={`${index}`}>{item}</h5>;
-      })}
-    </div>
-  );
+    return (
+        <div style={{display: "flex", flexDirection: "column"}}>
+            <input type="text" onChange={onChangeHandler} value={input}/>
+            <button onClick={onClickHandler}>Submit {messages.length}</button>
+            {messages.map((item, index) => {
+                return <h5 key={`${index}`}>{item}</h5>;
+            })}
+        </div>
+    );
 }
